@@ -1,0 +1,18 @@
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local database
+data/jobs.db
+
+# Environment variables / API keys
+.env
+
+# VS Code settings
+.vscode/
+
+# Streamlit cache
+.streamlit/secrets.toml
