@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import date
 from database import create_database, add_missing_columns, add_job, get_all_jobs, count_jobs, count_applied_jobs, update_job_status, get_job_by_id, update_match_score, get_all_missing_skills
 from matcher import calculate_match
+from ai_assistant import generate_ai_cv_analysis
 
 
 st.set_page_config(
@@ -25,8 +26,10 @@ menu = st.sidebar.radio(
         "Dashboard",
         "Add Job",
         "Match CV with Job",
+        "AI CV Analysis",
         "Application Tracker",
         "Skill Gap Report"
+
     ]
 )
 
@@ -234,6 +237,76 @@ elif menu == "Match CV with Job":
                         )
 
                     st.info("Match score has been saved into the database. Check Application Tracker.")
+
+elif menu == "AI CV Analysis":
+    st.header("AI CV Analysis")
+
+    st.write(
+        "Select a saved job, paste your CV, and generate an AI-based application analysis."
+    )
+
+    jobs = get_all_jobs()
+
+    if len(jobs) == 0:
+        st.warning("No saved jobs found. Please add a job first.")
+
+    else:
+        job_options = {}
+
+        for job in jobs:
+            job_id = job[0]
+            position = job[1]
+            company = job[2]
+
+            label = f"{job_id} - {position} at {company}"
+            job_options[label] = job_id
+
+        selected_label = st.selectbox(
+            "Select Saved Job for AI Analysis",
+            list(job_options.keys())
+        )
+
+        selected_job_id = job_options[selected_label]
+        selected_job = get_job_by_id(selected_job_id)
+
+        if selected_job:
+            job_id = selected_job[0]
+            position_name = selected_job[1]
+            company_name = selected_job[2]
+            location = selected_job[3]
+            source = selected_job[4]
+            deadline = selected_job[5]
+            status = selected_job[6]
+            old_match_score = selected_job[7]
+            job_description = selected_job[8]
+            job_link = selected_job[9]
+
+            st.subheader("Selected Job")
+            st.write(f"**Position:** {position_name}")
+            st.write(f"**Company:** {company_name}")
+            st.write(f"**Location:** {location}")
+
+            with st.expander("View Job Description"):
+                st.write(job_description)
+
+            cv_text = st.text_area("Paste your CV text for AI analysis", height=250)
+
+            if st.button("Generate AI Analysis"):
+                if cv_text.strip() == "":
+                    st.error("Please paste your CV text.")
+                elif job_description.strip() == "":
+                    st.error("This job does not have a job description.")
+                else:
+                    with st.spinner("Generating AI analysis..."):
+                        ai_result = generate_ai_cv_analysis(
+                            cv_text,
+                            job_description,
+                            position_name,
+                            company_name
+                        )
+
+                    st.subheader("AI Analysis Result")
+                    st.write(ai_result)
 
 elif menu == "Application Tracker":
     st.header("Application Tracker")
