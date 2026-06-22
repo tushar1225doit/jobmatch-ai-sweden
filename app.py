@@ -4,6 +4,7 @@ from datetime import date
 from database import create_database, add_missing_columns, add_job, get_all_jobs, count_jobs, count_applied_jobs, update_job_status, get_job_by_id, update_match_score, get_all_missing_skills
 from matcher import calculate_match
 from ai_assistant import generate_ai_cv_analysis
+from job_api import search_jobs
 
 
 st.set_page_config(
@@ -24,6 +25,7 @@ menu = st.sidebar.radio(
     "Navigation",
     [
         "Dashboard",
+        "Find Jobs",
         "Add Job",
         "Match CV with Job",
         "AI CV Analysis",
@@ -47,6 +49,119 @@ if menu == "Dashboard":
     col4.metric("Average Match", "0%")
 
     st.info("This dashboard now reads job counts from your SQLite database.")
+
+elif menu == "Find Jobs":
+    st.header("Find Jobs from Arbetsförmedlingen")
+
+    st.write(
+        "Search current job ads using Arbetsförmedlingen / JobTech open JobSearch API."
+    )
+
+    # Create session state to store search results
+    # This prevents results from disappearing when Streamlit reruns
+    if "job_search_results" not in st.session_state:
+        st.session_state.job_search_results = []
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        keyword = st.text_input(
+            "Keyword",
+            value="IT support"
+        )
+
+    with col2:
+        location = st.text_input(
+            "Location",
+            value="Malmö"
+        )
+
+    with col3:
+        limit = st.selectbox(
+            "Number of jobs",
+            [5, 10, 20, 50],
+            index=1
+        )
+
+    if st.button("Search Jobs"):
+        if keyword.strip() == "":
+            st.error("Please enter a keyword.")
+        else:
+            with st.spinner("Searching jobs from Arbetsförmedlingen..."):
+                results = search_jobs(
+                    keyword=keyword,
+                    location=location,
+                    limit=limit
+                )
+
+            if isinstance(results, dict) and "error" in results:
+                st.error(f"API error: {results['error']}")
+
+            elif len(results) == 0:
+                st.warning("No jobs found for this search.")
+                st.session_state.job_search_results = []
+
+            else:
+                # Save search results in Streamlit session state
+                st.session_state.job_search_results = results
+                st.success(f"Found {len(results)} job(s).")
+
+    # Read results from session state
+    results = st.session_state.job_search_results
+
+    if len(results) > 0:
+        results_df = pd.DataFrame(results)
+
+        st.subheader("Search Results")
+
+        st.dataframe(
+            results_df[
+                [
+                    "Position",
+                    "Company",
+                    "Location",
+                    "Region",
+                    "Deadline",
+                    "Job Link"
+                ]
+            ],
+            use_container_width=True
+        )
+
+        st.subheader("Job Details")
+
+        selected_index = st.selectbox(
+            "Select job number to view details",
+            list(range(len(results))),
+            format_func=lambda x: f"{x} - {results[x]['Position']} at {results[x]['Company']}"
+        )
+
+        selected_job = results[selected_index]
+
+        st.write(f"**Position:** {selected_job['Position']}")
+        st.write(f"**Company:** {selected_job['Company']}")
+        st.write(f"**Location:** {selected_job['Location']}")
+        st.write(f"**Region:** {selected_job['Region']}")
+        st.write(f"**Deadline:** {selected_job['Deadline']}")
+        st.write(f"**Job Link:** {selected_job['Job Link']}")
+
+        with st.expander("View Job Description"):
+            st.write(selected_job["Job Description"])
+
+        if st.button("Save this job to database"):
+            add_job(
+                selected_job["Position"],
+                selected_job["Company"],
+                selected_job["Job Link"],
+                selected_job["Location"],
+                "Arbetsförmedlingen API",
+                selected_job["Deadline"],
+                selected_job["Job Description"]
+            )
+
+            st.success(
+                f"Saved job: {selected_job['Position']} at {selected_job['Company']}"
+            )
 
 elif menu == "Add Job":
     st.header("Add New Job")
