@@ -283,3 +283,22 @@ def get_all_missing_skills():
     conn.close()
 
     return rows
+
+def job_exists_by_link(job_link):
+    # Check whether a job with the same job_link already exists in database.
+    # Returns True if job exists, otherwise False.
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM jobs
+        WHERE job_link = ?
+    """, (job_link,))
+
+    count = cursor.fetchone()[0]
+
+    conn.close()
+
+    return count > 0

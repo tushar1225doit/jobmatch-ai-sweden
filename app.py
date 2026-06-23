@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from database import create_database, add_missing_columns, add_job, get_all_jobs, count_jobs, count_applied_jobs, update_job_status, get_job_by_id, update_match_score, get_all_missing_skills
+from database import create_database, add_missing_columns, add_job, get_all_jobs, count_jobs, count_applied_jobs, update_job_status, get_job_by_id, update_match_score, get_all_missing_skills, job_exists_by_link
 from matcher import calculate_match
 from ai_assistant import generate_ai_cv_analysis
 from job_api import search_jobs
@@ -149,19 +149,29 @@ elif menu == "Find Jobs":
             st.write(selected_job["Job Description"])
 
         if st.button("Save this job to database"):
-            add_job(
-                selected_job["Position"],
-                selected_job["Company"],
-                selected_job["Job Link"],
-                selected_job["Location"],
-                "Arbetsförmedlingen API",
-                selected_job["Deadline"],
-                selected_job["Job Description"]
-            )
 
-            st.success(
+            job_link = selected_job["Job Link"]
+
+    # Check if job already exists in database
+            if job_exists_by_link(job_link):
+             st.warning(
+                f"This job is already saved: {selected_job['Position']} at {selected_job['Company']}"
+        )
+
+            else:
+                add_job(
+            selected_job["Position"],
+            selected_job["Company"],
+            selected_job["Job Link"],
+            selected_job["Location"],
+            "Arbetsförmedlingen API",
+            selected_job["Deadline"],
+            selected_job["Job Description"]
+        )
+
+                st.success(
                 f"Saved job: {selected_job['Position']} at {selected_job['Company']}"
-            )
+                )
 
 elif menu == "Add Job":
     st.header("Add New Job")
