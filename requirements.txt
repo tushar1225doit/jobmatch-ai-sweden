@@ -1,2 +1,6 @@
-google-generativeai
+
+streamlit
+pandas
+requests
 python-dotenv
+google-generativeai
